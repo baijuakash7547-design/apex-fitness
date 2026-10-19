@@ -70,6 +70,7 @@ const NutritionModule = (() => {
     const saveGoalsBtn = document.getElementById('save-nutrition-goals-btn');
     if (saveGoalsBtn) saveGoalsBtn.addEventListener('click', saveNutritionGoals);
     document.getElementById('estimate-food-btn')?.addEventListener('click', searchFoodNutrition);
+    document.getElementById('ai-estimate-food-btn')?.addEventListener('click', estimateFoodWithAI);
     const foodSelect = document.getElementById('food-select');
     foodSelect?.addEventListener('change', () => {
       const food = getFoodSelection(foodSelect.value);
@@ -165,6 +166,60 @@ const NutritionModule = (() => {
     } catch (error) {
       if (error.name === 'AbortError') return;
       status.textContent = `Could not search the food database: ${error.message || 'Check your connection and try again.'}`;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function estimateFoodWithAI() {
+    const nameInput = document.getElementById('food-name');
+    const query = nameInput?.value.trim();
+    const servingInput = document.getElementById('food-serving');
+    const serving = servingInput?.value.trim();
+    const status = document.getElementById('food-lookup-status');
+    const button = document.getElementById('ai-estimate-food-btn');
+    const quantity = Number(document.getElementById('food-quantity')?.value);
+
+    if (!query || query.length > 120) {
+      status.textContent = 'Enter a food or drink name first.';
+      nameInput?.focus();
+      return;
+    }
+    if (serving && serving.length > 40) {
+      status.textContent = 'Serving measure must be 40 characters or fewer.';
+      servingInput?.focus();
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+      status.textContent = 'Enter a quantity from 1 to 100 before estimating.';
+      document.getElementById('food-quantity')?.focus();
+      return;
+    }
+
+    button.disabled = true;
+    status.textContent = 'Checking nutrition data and preparing an estimate…';
+    try {
+      const result = await AuthModule.invokeNutritionEstimate({ food: query, serving: serving || null });
+      const nutrition = result?.nutrition;
+      if (!nutrition || !['calories', 'protein', 'carbs', 'fat'].every(key =>
+        Number.isFinite(nutrition[key]) && nutrition[key] >= 0,
+      )) {
+        throw new Error('The nutrition service returned incomplete values. Please try again or enter the values manually.');
+      }
+      const values = {
+        'food-serving': result.serving,
+        'food-calories': roundNutrition(nutrition.calories),
+        'food-protein': roundNutrition(nutrition.protein),
+        'food-carbs': roundNutrition(nutrition.carbs),
+        'food-fat': roundNutrition(nutrition.fat),
+      };
+      Object.entries(values).forEach(([id, value]) => {
+        document.getElementById(id).value = value;
+      });
+      const source = result.source === 'usda' ? 'USDA FoodData Central' : 'AI estimate';
+      status.textContent = `${source} for ${result.serving} (${quantity} ${quantity === 1 ? 'serving' : 'servings'} will be logged). ${result.note || 'Review the values before adding them to your log.'}`;
+    } catch (error) {
+      status.textContent = `Could not estimate nutrition: ${error.message || 'Check your connection and try again.'}`;
     } finally {
       button.disabled = false;
     }
