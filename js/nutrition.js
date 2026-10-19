@@ -36,14 +36,29 @@ const NutritionModule = (() => {
   function populateFoodDropdown() {
     const select = document.getElementById('food-select');
     if (!select) return;
-    select.innerHTML = '<option value="">-- Select food or type custom --</option>';
+    select.replaceChildren(new Option('-- Select a regular food --', ''));
+    const presets = document.createElement('optgroup');
+    presets.label = 'Common foods';
     FOOD_DB.forEach((f, i) => {
       const opt = document.createElement('option');
-      opt.value = i;
+      opt.value = `preset:${i}`;
       opt.textContent = f.name;
-      select.appendChild(opt);
+      presets.appendChild(opt);
     });
+    select.appendChild(presets);
 
+    const customFoods = getCustomFoods();
+    if (customFoods.length) {
+      const saved = document.createElement('optgroup');
+      saved.label = 'My regular foods';
+      customFoods.forEach(food => {
+        const option = document.createElement('option');
+        option.value = `custom:${food.id}`;
+        option.textContent = `${food.name} (${food.serving})`;
+        saved.appendChild(option);
+      });
+      select.appendChild(saved);
+    }
   }
 
   function setupEventListeners() {
@@ -54,53 +69,131 @@ const NutritionModule = (() => {
     if (saveGoalsBtn) saveGoalsBtn.addEventListener('click', saveNutritionGoals);
     const foodSelect = document.getElementById('food-select');
     foodSelect?.addEventListener('change', () => {
-      const selected = foodSelect.value;
-      if (selected === '') return;
-      const index = Number(selected);
-      if (!Number.isInteger(index) || index < 0 || index >= FOOD_DB.length) {
-        showToast('Choose an item from the food list.', 'warning');
-        foodSelect.value = '';
-        return;
-      }
-      const food = FOOD_DB[index];
-      const fields = {
-        'food-name': food.name,
-        'food-calories': food.calories,
-        'food-protein': food.protein,
-        'food-carbs': food.carbs,
-        'food-fat': food.fat,
-      };
-      Object.entries(fields).forEach(([id, value]) => {
-        const input = document.getElementById(id);
-        if (input) input.value = value;
-      });
+      const food = getFoodSelection(foodSelect.value);
+      if (!food) return;
+      fillFoodFields(food);
     });
+    document.getElementById('food-quantity-minus')?.addEventListener('click', () => changeQuantity(-1));
+    document.getElementById('food-quantity-plus')?.addEventListener('click', () => changeQuantity(1));
+    document.getElementById('food-quantity')?.addEventListener('change', normalizeQuantity);
     document.getElementById('meal-log-container')?.addEventListener('click', event => {
       const button = event.target.closest('[data-action="delete-meal"]');
       if (button) deleteMeal(Number(button.dataset.id));
     });
   }
 
+  function getCustomFoods() {
+    const foods = Storage.get('ft_custom_foods', []);
+    return Array.isArray(foods) ? foods.filter(food =>
+      food && typeof food === 'object' && typeof food.id === 'string' &&
+      typeof food.name === 'string' && typeof food.serving === 'string' &&
+      ['calories', 'protein', 'carbs', 'fat'].every(key => Number.isFinite(Number(food[key]))),
+    ) : [];
+  }
+
+  function getFoodSelection(value) {
+    if (value.startsWith('preset:')) {
+      const index = Number(value.slice('preset:'.length));
+      const food = FOOD_DB[index];
+      if (!Number.isInteger(index) || !food) return null;
+      const serving = food.name.match(/\(([^()]*)\)\s*$/)?.[1] || '1 serving';
+      return { ...food, name: food.name.replace(/\s*\([^()]*\)\s*$/, ''), serving };
+    }
+    if (value.startsWith('custom:')) {
+      const id = value.slice('custom:'.length);
+      return getCustomFoods().find(food => food.id === id) || null;
+    }
+    return null;
+  }
+
+  function fillFoodFields(food) {
+    const fields = {
+      'food-name': food.name,
+      'food-serving': food.serving,
+      'food-calories': food.calories,
+      'food-protein': food.protein,
+      'food-carbs': food.carbs,
+      'food-fat': food.fat,
+      'food-quantity': 1,
+    };
+    Object.entries(fields).forEach(([id, value]) => {
+      const input = document.getElementById(id);
+      if (input) input.value = value;
+    });
+  }
+
+  function changeQuantity(change) {
+    const input = document.getElementById('food-quantity');
+    if (!input) return;
+    const current = Number(input.value) || 1;
+    input.value = Math.max(1, Math.min(100, current + change));
+  }
+
+  function normalizeQuantity() {
+    const input = document.getElementById('food-quantity');
+    if (!input) return;
+    const quantity = Number(input.value);
+    input.value = Number.isInteger(quantity) && quantity >= 1 && quantity <= 100 ? quantity : 1;
+  }
+
   function addMeal() {
     const name = document.getElementById('food-name')?.value.trim();
-    const calories = Number(document.getElementById('food-calories')?.value);
-    const protein = Number(document.getElementById('food-protein')?.value || 0);
-    const carbs = Number(document.getElementById('food-carbs')?.value || 0);
-    const fat = Number(document.getElementById('food-fat')?.value || 0);
+    const serving = document.getElementById('food-serving')?.value.trim();
+    const servingCalories = Number(document.getElementById('food-calories')?.value);
+    const servingProtein = Number(document.getElementById('food-protein')?.value || 0);
+    const servingCarbs = Number(document.getElementById('food-carbs')?.value || 0);
+    const servingFat = Number(document.getElementById('food-fat')?.value || 0);
+    const quantity = Number(document.getElementById('food-quantity')?.value);
     const mealType = document.getElementById('meal-type')?.value || 'snack';
 
     if (!name || name.length > 120) { showToast('Enter a food name between 1 and 120 characters.', 'warning'); return; }
-    if (!Number.isFinite(calories) || calories <= 0 || calories > 100000) { showToast('Calories must be greater than 0 and no more than 100,000.', 'warning'); return; }
-    if (![protein, carbs, fat].every(value => Number.isFinite(value) && value >= 0 && value <= 10000)) {
+    if (!serving || serving.length > 40) { showToast('Enter a serving measure between 1 and 40 characters.', 'warning'); return; }
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) { showToast('Quantity must be a whole number from 1 to 100.', 'warning'); return; }
+    const totals = {
+      calories: servingCalories * quantity,
+      protein: servingProtein * quantity,
+      carbs: servingCarbs * quantity,
+      fat: servingFat * quantity,
+    };
+    if (!Number.isFinite(servingCalories) || servingCalories <= 0 || totals.calories > 100000) {
+      showToast('Total calories must be greater than 0 and no more than 100,000.', 'warning');
+      return;
+    }
+    if (![servingProtein, servingCarbs, servingFat].every(value => Number.isFinite(value) && value >= 0) ||
+      [totals.protein, totals.carbs, totals.fat].some(value => !Number.isFinite(value) || value > 10000)) {
       showToast('Macro values must be between 0 and 10,000 grams.', 'warning');
       return;
     }
     if (!['breakfast', 'lunch', 'dinner', 'snack'].includes(mealType)) { showToast('Choose a valid meal type.', 'warning'); return; }
 
+    if (document.getElementById('save-food-for-reuse')?.checked) {
+      const savedFoods = getCustomFoods();
+      const matchingIndex = savedFoods.findIndex(food =>
+        food.name.toLocaleLowerCase() === name.toLocaleLowerCase() &&
+        food.serving.toLocaleLowerCase() === serving.toLocaleLowerCase(),
+      );
+      const savedFood = {
+        id: matchingIndex >= 0 ? savedFoods[matchingIndex].id : `food-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name, serving,
+        calories: servingCalories,
+        protein: servingProtein,
+        carbs: servingCarbs,
+        fat: servingFat,
+      };
+      if (matchingIndex >= 0) savedFoods[matchingIndex] = savedFood;
+      else savedFoods.push(savedFood);
+      if (!Storage.set('ft_custom_foods', savedFoods)) return;
+      populateFoodDropdown();
+    }
+
     const meals = Storage.getMeals();
     meals.unshift({
       id: Date.now(),
-      name, calories, protein, carbs, fat,
+      name, serving, quantity,
+      calories: totals.calories,
+      protein: totals.protein,
+      carbs: totals.carbs,
+      fat: totals.fat,
       mealType,
       date: new Date().toISOString(),
     });
@@ -114,10 +207,12 @@ const NutritionModule = (() => {
   }
 
   function clearNutritionFields() {
-    ['food-name', 'food-calories', 'food-protein', 'food-carbs', 'food-fat'].forEach(id => {
+    ['food-name', 'food-serving', 'food-calories', 'food-protein', 'food-carbs', 'food-fat'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    document.getElementById('food-quantity').value = 1;
+    document.getElementById('save-food-for-reuse').checked = false;
     const sel = document.getElementById('food-select');
     if (sel) sel.value = '';
   }
@@ -164,6 +259,7 @@ const NutritionModule = (() => {
             <div class="meal-item">
               <div class="meal-item-info">
                 <span class="meal-name">${escapeHTML(m.name)}</span>
+                <span class="meal-date-tag">${Number.isInteger(m.quantity) && m.quantity > 1 ? `${m.quantity} × ` : ''}${escapeHTML(m.serving || '1 serving')}</span>
                 <span class="meal-date-tag">${formatDate(m.date)}</span>
               </div>
               <div class="meal-macros">

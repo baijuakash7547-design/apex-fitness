@@ -598,9 +598,9 @@
                 </select>
               </div>
               <div class="form-group" style="margin-bottom:12px">
-                <label class="form-label" for="food-select">Quick Add from Database</label>
+                <label class="form-label" for="food-select">Quick Add Food</label>
                 <select class="input" id="food-select">
-                  <option value="">-- Select from database --</option>
+                  <option value="">-- Select a regular food --</option>
                 </select>
               </div>
               <div class="form-group" style="margin-bottom:12px">
@@ -609,24 +609,45 @@
               </div>
               <div class="form-row" style="margin-bottom:12px">
                 <div class="form-group">
-                  <label class="form-label" for="food-calories">Calories</label>
+                  <label class="form-label" for="food-serving">Serving measure</label>
+                  <input type="text" class="input" id="food-serving" placeholder="e.g. 1 large egg, 100 g" maxlength="40" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="food-quantity">Number of servings</label>
+                  <div class="quantity-control">
+                    <button type="button" class="btn btn-secondary quantity-step" id="food-quantity-minus"
+                      aria-label="Decrease quantity">−</button>
+                    <input type="number" class="input" id="food-quantity" value="1" min="1" max="100" step="1" />
+                    <button type="button" class="btn btn-secondary quantity-step" id="food-quantity-plus"
+                      aria-label="Increase quantity">+1</button>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row" style="margin-bottom:12px">
+                <div class="form-group">
+                  <label class="form-label" for="food-calories">Calories per serving</label>
                   <input type="number" class="input" id="food-calories" placeholder="0" min="0" max="100000" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="food-protein">Protein (g)</label>
+                  <label class="form-label" for="food-protein">Protein per serving (g)</label>
                   <input type="number" class="input" id="food-protein" placeholder="0" min="0" max="10000" step="0.1" />
                 </div>
               </div>
               <div class="form-row" style="margin-bottom:16px">
                 <div class="form-group">
-                  <label class="form-label" for="food-carbs">Carbs (g)</label>
+                  <label class="form-label" for="food-carbs">Carbs per serving (g)</label>
                   <input type="number" class="input" id="food-carbs" placeholder="0" min="0" max="10000" step="0.1" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="food-fat">Fat (g)</label>
+                  <label class="form-label" for="food-fat">Fat per serving (g)</label>
                   <input type="number" class="input" id="food-fat" placeholder="0" min="0" max="10000" step="0.1" />
                 </div>
               </div>
+              <label class="remember-option custom-food-option" style="margin-bottom:16px">
+                <input type="checkbox" id="save-food-for-reuse" />
+                <span class="custom-check"></span>
+                Save this food and its serving measure for quick reuse
+              </label>
               <button type="button" class="btn btn-primary" id="add-meal-btn" style="width:100%">🍽️ Add to Log</button>
             </div>
 

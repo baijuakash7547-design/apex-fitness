@@ -46,6 +46,7 @@ function exportData() {
     schemaVersion: 1,
     workouts: Storage.getWorkouts(),
     meals: Storage.getMeals(),
+    customFoods: Storage.get('ft_custom_foods', []),
     water: Storage.getWater(),
     goals: Storage.getGoals(),
     body: Storage.getBodyStats(),
