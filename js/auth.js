@@ -5,7 +5,6 @@ const AuthModule = (() => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsdWtkbGZ6aHByeHFzYml3YmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNzg0NjIsImV4cCI6MjEwNzk1NDQ2Mn0.DcmTARDMpVl5gxNePwoKV3VC2iOo1aYLulnxCMrNH5s';
     let mode = 'login';
     let supabaseClient;
-    let recoveryStage = 'request';
 
     function setAuthMessage(message, success = false) {
         const messageEl = document.getElementById('auth-message');
@@ -16,15 +15,8 @@ const AuthModule = (() => {
 
     function setMode(nextMode) {
         mode = nextMode;
-        recoveryStage = 'request';
         const registering = mode === 'register';
         document.getElementById('auth-form').hidden = false;
-        document.getElementById('recovery-form').hidden = true;
-        document.getElementById('recovery-code').value = '';
-        document.getElementById('recovery-password').value = '';
-        document.getElementById('recovery-confirm').value = '';
-        document.getElementById('auth-tabs').hidden = false;
-        document.getElementById('auth-switch-copy').hidden = false;
         document.getElementById('auth-description').textContent = registering
             ? 'A fresh start, built around the goals that matter to you.'
             : 'Pick up where you left off. Your next win is waiting.';
@@ -60,36 +52,6 @@ const AuthModule = (() => {
         document.getElementById('auth-password').autocomplete = registering ? 'new-password' : 'current-password';
         document.getElementById('accept-terms').required = registering;
         setAuthMessage('');
-    }
-
-    function showRecovery() {
-        recoveryStage = 'request';
-        document.getElementById('auth-form').hidden = true;
-        document.getElementById('recovery-form').hidden = false;
-        document.getElementById('auth-tabs').hidden = true;
-        document.getElementById('auth-switch-copy').hidden = true;
-        document.getElementById('auth-eyebrow').textContent = 'RESET YOUR PASSWORD';
-        document.getElementById('auth-title').replaceChildren(
-            document.createTextNode('Recover your'),
-            document.createElement('br'),
-            document.createTextNode('account'),
-        );
-        document.getElementById('auth-description').textContent = 'We’ll email you a one-time recovery code.';
-        const email = document.getElementById('auth-email').value.trim();
-        document.getElementById('recovery-email').value = email;
-        document.getElementById('recovery-code').value = '';
-        document.getElementById('recovery-password').value = '';
-        document.getElementById('recovery-confirm').value = '';
-        document.getElementById('recovery-email').required = true;
-        document.getElementById('recovery-code-field').hidden = true;
-        document.getElementById('recovery-password-field').hidden = true;
-        document.getElementById('recovery-confirm-field').hidden = true;
-        document.getElementById('recovery-code').required = false;
-        document.getElementById('recovery-password').required = false;
-        document.getElementById('recovery-confirm').required = false;
-        document.getElementById('recovery-submit-label').textContent = 'Send recovery code';
-        setAuthMessage('');
-        document.getElementById('recovery-email').focus();
     }
 
     function showApp(account) {
@@ -194,78 +156,6 @@ const AuthModule = (() => {
         }
     }
 
-    async function handleRecoverySubmit(event) {
-        event.preventDefault();
-        setAuthMessage('');
-
-        const emailInput = document.getElementById('recovery-email');
-        const email = emailInput.value.trim().toLowerCase();
-        const submitButton = document.getElementById('recovery-submit');
-        const submitLabel = document.getElementById('recovery-submit-label');
-
-        if (!email || !emailInput.validity.valid) {
-            setAuthMessage('Enter a valid email address.');
-            emailInput.focus();
-            return;
-        }
-
-        submitButton.disabled = true;
-        submitLabel.textContent = recoveryStage === 'request' ? 'Sending code…' : 'Verifying code…';
-        setAuthMessage(recoveryStage === 'request' ? 'Requesting a recovery code…' : 'Verifying your code…');
-        try {
-            if (recoveryStage === 'request') {
-                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}${window.location.pathname}`,
-                });
-                if (error) throw error;
-
-                recoveryStage = 'verify';
-                document.getElementById('recovery-code-field').hidden = false;
-                document.getElementById('recovery-password-field').hidden = false;
-                document.getElementById('recovery-confirm-field').hidden = false;
-                document.getElementById('recovery-code').required = true;
-                document.getElementById('recovery-password').required = true;
-                document.getElementById('recovery-confirm').required = true;
-                document.getElementById('recovery-submit-label').textContent = 'Verify code and reset password';
-                setAuthMessage('If an account exists for this email, a recovery code has been sent. Check your inbox and spam folder.', true);
-                document.getElementById('recovery-code').focus();
-                return;
-            }
-
-            const token = document.getElementById('recovery-code').value.trim();
-            const password = document.getElementById('recovery-password').value;
-            const confirmPassword = document.getElementById('recovery-confirm').value;
-            if (!token) {
-                setAuthMessage('Enter the recovery code from your email.');
-                document.getElementById('recovery-code').focus();
-                return;
-            }
-            if (password.length < 8 || password.length > 128) {
-                setAuthMessage('Your new password must be between 8 and 128 characters.');
-                document.getElementById('recovery-password').focus();
-                return;
-            }
-            if (password !== confirmPassword) {
-                setAuthMessage('Those passwords do not match.');
-                document.getElementById('recovery-confirm').focus();
-                return;
-            }
-
-            const { error: verifyError } = await supabaseClient.auth.verifyOtp({ email, token, type: 'recovery' });
-            if (verifyError) throw verifyError;
-            const { data, error } = await supabaseClient.auth.updateUser({ password });
-            if (error) throw error;
-            showToast('Your password was reset successfully.', 'success');
-            showApp(data.user);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            setAuthMessage(`Could not reset your password: ${message || 'Please try again.'}`);
-        } finally {
-            submitButton.disabled = false;
-            submitLabel.textContent = recoveryStage === 'request' ? 'Send recovery code' : 'Verify code and reset password';
-        }
-    }
-
     async function init() {
         const form = document.getElementById('auth-form');
         if (!form) return;
@@ -300,8 +190,6 @@ const AuthModule = (() => {
 
         document.getElementById('login-tab').addEventListener('click', () => setMode('login'));
         document.getElementById('register-tab').addEventListener('click', () => setMode('register'));
-        document.getElementById('forgot-password-btn').addEventListener('click', showRecovery);
-        document.getElementById('recovery-back-btn').addEventListener('click', () => setMode('login'));
         document.querySelector('.auth-tabs')?.addEventListener('keydown', event => {
             if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
             event.preventDefault();
@@ -333,7 +221,6 @@ const AuthModule = (() => {
             showAuth();
         });
         form.addEventListener('submit', handleSubmit);
-        document.getElementById('recovery-form').addEventListener('submit', handleRecoverySubmit);
 
         supabaseClient.auth.onAuthStateChange((event, session) => {
             if (session?.user) showApp(session.user);

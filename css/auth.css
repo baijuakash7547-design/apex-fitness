@@ -407,9 +407,7 @@
 
 .auth-tab:focus-visible,
 .auth-switch button:focus-visible,
-.password-toggle:focus-visible,
-.auth-forgot:focus-visible,
-.auth-back-link:focus-visible {
+.password-toggle:focus-visible {
     outline: 2px solid #C4B5FD;
     outline-offset: 3px;
 }
@@ -511,31 +509,6 @@
     justify-content: space-between;
     gap: 10px;
     margin-top: -1px;
-}
-
-.auth-forgot,
-.auth-back-link {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: #B9A5FF;
-    font: inherit;
-    font-size: 0.68rem;
-    font-weight: 650;
-}
-
-.auth-forgot:hover,
-.auth-back-link:hover {
-    color: #E9D5FF;
-    text-decoration: underline;
-}
-
-.recovery-form {
-    margin-top: 4px;
-}
-
-.auth-back-link {
-    align-self: center;
 }
 
 .remember-option {
