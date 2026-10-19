@@ -87,7 +87,7 @@ const AuthModule = (() => {
         switchButton.dataset.switch = registering ? 'login' : 'register';
         switchButton.textContent = registering ? 'Sign in' : 'Create an account';
         switchCopy.replaceChildren(
-            document.createTextNode(registering ? 'Already have an account? ' : 'New to PRISM? '),
+            document.createTextNode(registering ? 'Already have an account? ' : 'New to APEX? '),
             switchButton,
         );
         document.getElementById('auth-password').autocomplete = registering ? 'new-password' : 'current-password';
