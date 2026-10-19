@@ -119,6 +119,10 @@ const AuthModule = (() => {
 
         submitButton.disabled = true;
         document.getElementById('submit-label').textContent = registering ? 'Creating account…' : 'Signing in…';
+        setAuthMessage(registering ? 'Sending your registration to Supabase…' : 'Signing in securely…');
+        const waitingTimer = window.setTimeout(() => {
+            setAuthMessage('Supabase is taking longer than expected. Please wait; this request is still in progress.');
+        }, 10000);
         try {
             if (registering) {
                 const { data, error } = await supabaseClient.auth.signUp({
@@ -131,9 +135,10 @@ const AuthModule = (() => {
                 });
                 if (error) throw error;
                 if (data.session) {
+                    showToast('Your APEX account was created successfully.', 'success');
                     showApp(data.user);
                 } else {
-                    setAuthMessage('Account created. Check your email to confirm your address, then sign in.', true);
+                    setAuthMessage('Registration request completed. Check your inbox and spam folder for a confirmation email. If it does not arrive, verify Supabase email delivery settings.', true);
                 }
             } else {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -141,8 +146,10 @@ const AuthModule = (() => {
                 showApp(data.user);
             }
         } catch (error) {
-            setAuthMessage(error.message || 'Could not complete authentication. Please try again.');
+            const message = error instanceof Error ? error.message : String(error);
+            setAuthMessage(`Could not ${registering ? 'create your account' : 'sign in'}: ${message || 'Please try again.'}`);
         } finally {
+            window.clearTimeout(waitingTimer);
             submitButton.disabled = false;
             document.getElementById('submit-label').textContent = mode === 'register' ? 'Create my account' : 'Sign in';
         }
