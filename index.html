@@ -604,6 +604,16 @@
                 </select>
               </div>
               <div class="form-group" style="margin-bottom:12px">
+                <label class="form-label" for="food-quantity">Quantity (eggs, pieces, or servings)</label>
+                <div class="quantity-control">
+                  <button type="button" class="btn btn-secondary quantity-step" id="food-quantity-minus"
+                    aria-label="Decrease quantity">−</button>
+                  <input type="number" class="input" id="food-quantity" value="1" min="1" max="100" step="1" />
+                  <button type="button" class="btn btn-secondary quantity-step" id="food-quantity-plus"
+                    aria-label="Increase quantity">+1</button>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:12px">
                 <label class="form-label" for="food-name">Food Name</label>
                 <input type="text" class="input" id="food-name" placeholder="Enter food name" maxlength="120" />
               </div>
@@ -620,16 +630,6 @@
                 <div class="form-group">
                   <label class="form-label" for="food-serving">Serving measure (nutrition values below are per serving)</label>
                   <input type="text" class="input" id="food-serving" placeholder="e.g. 1 large egg, 100 g" maxlength="40" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label" for="food-quantity">Number of servings</label>
-                  <div class="quantity-control">
-                    <button type="button" class="btn btn-secondary quantity-step" id="food-quantity-minus"
-                      aria-label="Decrease quantity">−</button>
-                    <input type="number" class="input" id="food-quantity" value="1" min="1" max="100" step="1" />
-                    <button type="button" class="btn btn-secondary quantity-step" id="food-quantity-plus"
-                      aria-label="Increase quantity">+1</button>
-                  </div>
                 </div>
               </div>
               <div class="form-row" style="margin-bottom:12px">
