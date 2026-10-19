@@ -1,52 +1,10 @@
-// ── Local demo authentication ────────────────────────────────────────────────
+// ── Supabase authentication ──────────────────────────────────────────────────
 
 const AuthModule = (() => {
-    const ACCOUNT_KEY = 'prism_demo_account';
-    const SESSION_KEY = 'prism_demo_session';
-    const PBKDF2_ITERATIONS = 120000;
+    const SUPABASE_URL = 'https://vlukdlfzhprxqsbiwbcu.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsdWtkbGZ6aHByeHFzYml3YmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNzg0NjIsImV4cCI6MjEwNzk1NDQ2Mn0.DcmTARDMpVl5gxNePwoKV3VC2iOo1aYLulnxCMrNH5s';
     let mode = 'login';
-
-    function bytesToBase64(bytes) {
-        return btoa(String.fromCharCode(...new Uint8Array(bytes)));
-    }
-
-    function base64ToBytes(value) {
-        return Uint8Array.from(atob(value), character => character.charCodeAt(0));
-    }
-
-    async function hashPassword(password, salt) {
-        if (!window.crypto?.subtle || !window.crypto?.getRandomValues) {
-            throw new Error('Secure password hashing is unavailable. Open this page on localhost or HTTPS.');
-        }
-        const saltBytes = salt ? base64ToBytes(salt) : window.crypto.getRandomValues(new Uint8Array(16));
-        const key = await window.crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-        const bits = await window.crypto.subtle.deriveBits({ name: 'PBKDF2', salt: saltBytes, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, key, 256);
-        return { salt: bytesToBase64(saltBytes), hash: bytesToBase64(bits) };
-    }
-
-    function getSavedSession() {
-        try {
-            return JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || 'null');
-        } catch {
-            return null;
-        }
-    }
-
-    function getSavedAccount() {
-        try {
-            const account = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || 'null');
-            if (!account || typeof account.email !== 'string' || typeof account.salt !== 'string' || typeof account.hash !== 'string') return null;
-            return account;
-        } catch {
-            return null;
-        }
-    }
-
-    function setSession(email, remember) {
-        localStorage.removeItem(SESSION_KEY);
-        sessionStorage.removeItem(SESSION_KEY);
-        (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify({ email }));
-    }
+    let supabaseClient;
 
     function setAuthMessage(message, success = false) {
         const messageEl = document.getElementById('auth-message');
@@ -91,15 +49,17 @@ const AuthModule = (() => {
             switchButton,
         );
         document.getElementById('auth-password').autocomplete = registering ? 'new-password' : 'current-password';
+        document.getElementById('accept-terms').required = registering;
         setAuthMessage('');
     }
 
     function showApp(account) {
         const app = document.getElementById('app-layout');
         const auth = document.getElementById('auth-screen');
-        if (account?.name && typeof Storage !== 'undefined') {
+        const accountName = account?.user_metadata?.display_name;
+        if (accountName && typeof Storage !== 'undefined') {
             const profile = Storage.getProfile();
-            if (!profile.name || profile.name === 'Athlete') Storage.saveProfile({ ...profile, name: account.name });
+            if (!profile.name || profile.name === 'Athlete') Storage.saveProfile({ ...profile, name: accountName });
             if (typeof refreshProfile === 'function') refreshProfile();
         }
         auth.hidden = true;
@@ -152,12 +112,7 @@ const AuthModule = (() => {
                 return;
             }
             if (!document.getElementById('accept-terms').checked) {
-                setAuthMessage('Please accept the local demo terms to continue.');
-                return;
-            }
-            if (getSavedAccount()) {
-                setAuthMessage('An account already exists in this browser. Sign in instead.');
-                setMode('login');
+                setAuthMessage('Please confirm that your fitness data stays in this browser.');
                 return;
             }
         }
@@ -165,39 +120,65 @@ const AuthModule = (() => {
         submitButton.disabled = true;
         document.getElementById('submit-label').textContent = registering ? 'Creating account…' : 'Signing in…';
         try {
-            const account = getSavedAccount();
-            let signedInAccount;
-
             if (registering) {
-                const credentials = await hashPassword(password);
-                signedInAccount = { email, name, ...credentials };
-                localStorage.setItem(ACCOUNT_KEY, JSON.stringify(signedInAccount));
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: { display_name: name },
+                        emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+                    },
+                });
+                if (error) throw error;
+                if (data.session) {
+                    showApp(data.user);
+                } else {
+                    setAuthMessage('Account created. Check your email to confirm your address, then sign in.', true);
+                }
             } else {
-                if (!account || account.email !== email) {
-                    setAuthMessage('No matching account found. Check your details or create an account.');
-                    return;
-                }
-                const credentials = await hashPassword(password, account.salt);
-                if (credentials.hash !== account.hash) {
-                    setAuthMessage('That password does not match. Please try again.');
-                    return;
-                }
-                signedInAccount = account;
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                showApp(data.user);
             }
-
-            setSession(email, document.getElementById('remember-me').checked);
-            showApp(signedInAccount);
         } catch (error) {
-            setAuthMessage(error.message || 'Could not complete sign-in. Please try again.');
+            setAuthMessage(error.message || 'Could not complete authentication. Please try again.');
         } finally {
             submitButton.disabled = false;
             document.getElementById('submit-label').textContent = mode === 'register' ? 'Create my account' : 'Sign in';
         }
     }
 
-    function init() {
+    async function init() {
         const form = document.getElementById('auth-form');
         if (!form) return;
+        localStorage.removeItem('prism_demo_account');
+        localStorage.removeItem('prism_demo_session');
+        sessionStorage.removeItem('prism_demo_session');
+        if (!window.supabase?.createClient) {
+            document.getElementById('auth-screen').hidden = false;
+            document.body.classList.add('auth-active');
+            setAuthMessage('The authentication service could not be loaded. Check your internet connection and reload.');
+            return;
+        }
+
+        const authStorage = {
+            async getItem(key) {
+                return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+            },
+            async setItem(key, value) {
+                const target = document.getElementById('remember-me').checked ? localStorage : sessionStorage;
+                const other = target === localStorage ? sessionStorage : localStorage;
+                other.removeItem(key);
+                target.setItem(key, value);
+            },
+            async removeItem(key) {
+                localStorage.removeItem(key);
+                sessionStorage.removeItem(key);
+            },
+        };
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { storage: authStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        });
 
         document.getElementById('login-tab').addEventListener('click', () => setMode('login'));
         document.getElementById('register-tab').addEventListener('click', () => setMode('register'));
@@ -223,20 +204,34 @@ const AuthModule = (() => {
             event.currentTarget.textContent = showPassword ? 'Hide' : 'Show';
             event.currentTarget.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
         });
-        document.getElementById('sign-out-btn').addEventListener('click', () => {
-            localStorage.removeItem(SESSION_KEY);
-            sessionStorage.removeItem(SESSION_KEY);
+        document.getElementById('sign-out-btn').addEventListener('click', async () => {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                showToast(`Could not sign out: ${error.message}`, 'error');
+                return;
+            }
             showAuth();
         });
         form.addEventListener('submit', handleSubmit);
 
-        const account = getSavedAccount();
-        const savedSession = getSavedSession();
-        if (account && savedSession?.email === account.email) showApp(account);
-        else {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (session?.user) showApp(session.user);
+            else if (event === 'SIGNED_OUT') showAuth();
+        });
+        try {
+            const { data, error } = await supabaseClient.auth.getSession();
+            if (error) throw error;
+            if (data.session?.user) showApp(data.session.user);
+            else {
+                document.getElementById('app-layout').hidden = true;
+                document.getElementById('auth-screen').hidden = false;
+                document.body.classList.add('auth-active');
+            }
+        } catch (error) {
             document.getElementById('app-layout').hidden = true;
             document.getElementById('auth-screen').hidden = false;
             document.body.classList.add('auth-active');
+            setAuthMessage(`Could not check your sign-in session: ${error.message}`);
         }
     }
 
