@@ -391,6 +391,22 @@ select.input option {
   line-height: 1.5;
 }
 
+.food-lookup {
+  display: grid;
+  gap: 8px;
+}
+
+.food-lookup-note,
+.food-lookup-status {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.food-lookup-status:empty {
+  display: none;
+}
+
 /* ── Progress Bars ────────────────────────────────────────────────────────────── */
 .progress-bar-wrap {
   background: rgba(255, 255, 255, 0.08);

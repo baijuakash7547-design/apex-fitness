@@ -25,6 +25,8 @@ const NutritionModule = (() => {
   ];
 
   const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
+  let foodSearchResults = [];
+  let foodSearchController;
 
   function init() {
     populateFoodDropdown();
@@ -67,12 +69,14 @@ const NutritionModule = (() => {
 
     const saveGoalsBtn = document.getElementById('save-nutrition-goals-btn');
     if (saveGoalsBtn) saveGoalsBtn.addEventListener('click', saveNutritionGoals);
+    document.getElementById('estimate-food-btn')?.addEventListener('click', searchFoodNutrition);
     const foodSelect = document.getElementById('food-select');
     foodSelect?.addEventListener('change', () => {
       const food = getFoodSelection(foodSelect.value);
       if (!food) return;
       fillFoodFields(food);
     });
+    document.getElementById('food-search-results')?.addEventListener('change', applyFoodSearchResult);
     document.getElementById('food-quantity-minus')?.addEventListener('click', () => changeQuantity(-1));
     document.getElementById('food-quantity-plus')?.addEventListener('click', () => changeQuantity(1));
     document.getElementById('food-quantity')?.addEventListener('change', normalizeQuantity);
@@ -80,6 +84,133 @@ const NutritionModule = (() => {
       const button = event.target.closest('[data-action="delete-meal"]');
       if (button) deleteMeal(Number(button.dataset.id));
     });
+  }
+
+  async function searchFoodNutrition() {
+    const nameInput = document.getElementById('food-name');
+    const query = nameInput?.value.trim();
+    const status = document.getElementById('food-lookup-status');
+    const button = document.getElementById('estimate-food-btn');
+    const results = document.getElementById('food-search-results');
+    const resultsLabel = document.getElementById('food-search-results-label');
+
+    if (!query || query.length > 120) {
+      if (status) status.textContent = 'Enter a food or product name first.';
+      nameInput?.focus();
+      return;
+    }
+
+    foodSearchController?.abort();
+    foodSearchController = new AbortController();
+    button.disabled = true;
+    status.textContent = 'Searching Open Food Facts…';
+    results.hidden = true;
+    resultsLabel.hidden = true;
+    results.replaceChildren(new Option('-- Choose a matching food --', ''));
+    foodSearchResults = [];
+
+    try {
+      const params = new URLSearchParams({
+        search_terms: query,
+        fields: 'code,product_name,brands,serving_size,nutriments',
+        page_size: '12',
+        json: '1',
+      });
+      const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${params}`, {
+        signal: foodSearchController.signal,
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error(`Food database returned HTTP ${response.status}.`);
+      const data = await response.json();
+      const products = Array.isArray(data.products) ? data.products : [];
+      foodSearchResults = products
+        .map(product => {
+          const nutrients = product.nutriments || {};
+          const caloriesPer100 = nutrients['energy-kcal_100g'];
+          const proteinPer100 = nutrients.proteins_100g;
+          const calories = Number(caloriesPer100);
+          const protein = Number(proteinPer100);
+          if (!product.code || !product.product_name ||
+            caloriesPer100 === null || caloriesPer100 === undefined ||
+            proteinPer100 === null || proteinPer100 === undefined ||
+            !Number.isFinite(calories) || calories < 0 ||
+            !Number.isFinite(protein) || protein < 0) return null;
+          return {
+            code: String(product.code),
+            name: String(product.product_name).trim(),
+            brand: typeof product.brands === 'string' ? product.brands.split(',')[0].trim() : '',
+            servingSize: typeof product.serving_size === 'string' ? product.serving_size.trim() : '',
+            caloriesPer100: calories,
+            proteinPer100: protein,
+            carbsPer100: Number(nutrients.carbohydrates_100g) || 0,
+            fatPer100: Number(nutrients.fat_100g) || 0,
+          };
+        })
+        .filter(Boolean);
+
+      if (!foodSearchResults.length) {
+        status.textContent = 'No matching foods with calorie and protein data were found. Try a different name or enter values manually.';
+        return;
+      }
+
+      foodSearchResults.forEach((food, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = `${food.name}${food.brand ? ` — ${food.brand}` : ''}${food.servingSize ? ` (${food.servingSize})` : ''}`;
+        results.appendChild(option);
+      });
+      results.hidden = false;
+      resultsLabel.hidden = false;
+      status.textContent = `${foodSearchResults.length} matches found. Select the exact food/product to fill its nutrition estimate.`;
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      status.textContent = `Could not search the food database: ${error.message || 'Check your connection and try again.'}`;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function applyFoodSearchResult() {
+    const results = document.getElementById('food-search-results');
+    const index = Number(results.value);
+    const food = foodSearchResults[index];
+    if (!Number.isInteger(index) || !food) return;
+
+    const requestedServing = document.getElementById('food-serving').value.trim();
+    const requestedGrams = parseServingGrams(requestedServing);
+    const listedGrams = parseServingGrams(food.servingSize);
+    const amount = requestedGrams || listedGrams || 100;
+    const serving = requestedGrams
+      ? requestedServing
+      : listedGrams
+        ? food.servingSize
+        : '100 g';
+    const multiplier = amount / 100;
+    const fields = {
+      'food-name': food.name,
+      'food-serving': serving,
+      'food-calories': roundNutrition(food.caloriesPer100 * multiplier),
+      'food-protein': roundNutrition(food.proteinPer100 * multiplier),
+      'food-carbs': roundNutrition(food.carbsPer100 * multiplier),
+      'food-fat': roundNutrition(food.fatPer100 * multiplier),
+      'food-quantity': 1,
+    };
+    Object.entries(fields).forEach(([id, value]) => {
+      document.getElementById(id).value = value;
+    });
+    document.getElementById('food-lookup-status').textContent =
+      `Estimate filled for ${serving}. Review the selected product and serving values before logging.`;
+  }
+
+  function parseServingGrams(value) {
+    const match = String(value).match(/(\d+(?:[.,]\d+)?)\s*(?:g|gram|grams)\b/i);
+    if (!match) return 0;
+    const amount = Number(match[1].replace(',', '.'));
+    return Number.isFinite(amount) && amount > 0 ? amount : 0;
+  }
+
+  function roundNutrition(value) {
+    return Math.round(value * 10) / 10;
   }
 
   function getCustomFoods() {
@@ -215,6 +346,14 @@ const NutritionModule = (() => {
     document.getElementById('save-food-for-reuse').checked = false;
     const sel = document.getElementById('food-select');
     if (sel) sel.value = '';
+    const searchResults = document.getElementById('food-search-results');
+    if (searchResults) {
+      searchResults.replaceChildren(new Option('-- Choose a matching food --', ''));
+      searchResults.hidden = true;
+    }
+    document.getElementById('food-search-results-label').hidden = true;
+    document.getElementById('food-lookup-status').textContent = '';
+    foodSearchResults = [];
   }
 
   function renderMealLog() {

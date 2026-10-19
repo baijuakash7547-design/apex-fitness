@@ -607,9 +607,18 @@
                 <label class="form-label" for="food-name">Food Name</label>
                 <input type="text" class="input" id="food-name" placeholder="Enter food name" maxlength="120" />
               </div>
+              <div class="food-lookup" style="margin-bottom:12px">
+                <button type="button" class="btn btn-secondary" id="estimate-food-btn" style="width:100%">🔎 Find calories and protein</button>
+                <p class="food-lookup-note">Searches Open Food Facts. Choose a matching result; nutrition values are estimates and depend on the product and serving.</p>
+                <p class="food-lookup-status" id="food-lookup-status" role="status" aria-live="polite"></p>
+                <label class="form-label" for="food-search-results" id="food-search-results-label" hidden>Matching foods</label>
+                <select class="input" id="food-search-results" hidden>
+                  <option value="">-- Choose a matching food --</option>
+                </select>
+              </div>
               <div class="form-row" style="margin-bottom:12px">
                 <div class="form-group">
-                  <label class="form-label" for="food-serving">Serving measure</label>
+                  <label class="form-label" for="food-serving">Serving measure (nutrition values below are per serving)</label>
                   <input type="text" class="input" id="food-serving" placeholder="e.g. 1 large egg, 100 g" maxlength="40" />
                 </div>
                 <div class="form-group">
