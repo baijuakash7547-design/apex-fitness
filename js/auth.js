@@ -244,27 +244,5 @@ const AuthModule = (() => {
     }
 
     document.addEventListener('DOMContentLoaded', init);
-    async function invokeNutritionEstimate(food) {
-        if (!supabaseClient) throw new Error('The authentication service is not ready.');
-        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!sessionData.session) throw new Error('Sign in again to use AI nutrition estimates.');
-
-        const { data, error } = await supabaseClient.functions.invoke('estimate-nutrition', { body: food });
-        if (error) {
-            let message = error.message;
-            if (error.context instanceof Response) {
-                try {
-                    const details = await error.context.json();
-                    if (typeof details.error === 'string') message = details.error;
-                } catch {
-                    // Keep the SDK error message if the response is not JSON.
-                }
-            }
-            throw new Error(message);
-        }
-        return data;
-    }
-
-    return { showAuth, invokeNutritionEstimate };
+    return { showAuth };
 })();
