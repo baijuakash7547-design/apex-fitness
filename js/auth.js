@@ -67,6 +67,7 @@ const AuthModule = (() => {
         app.hidden = false;
         document.body.classList.remove('auth-active');
         if (typeof updateDashboard === 'function') updateDashboard();
+        if (typeof loadProfilePhoto === 'function') loadProfilePhoto();
     }
 
     function showAuth() {
@@ -113,7 +114,7 @@ const AuthModule = (() => {
                 return;
             }
             if (!document.getElementById('accept-terms').checked) {
-                setAuthMessage('Please confirm that your fitness data stays in this browser.');
+                setAuthMessage('Please confirm how profile photos and fitness data are stored.');
                 return;
             }
         }
@@ -243,6 +244,54 @@ const AuthModule = (() => {
         }
     }
 
+    async function getCurrentUser() {
+        if (!supabaseClient) throw new Error('The authentication service is not initialized.');
+        const { data, error } = await supabaseClient.auth.getUser();
+        if (error) throw error;
+        if (!data.user) throw new Error('Sign in to save a profile photo to your account.');
+        return data.user;
+    }
+
+    async function uploadProfilePhoto(file) {
+        const user = await getCurrentUser();
+        const path = `${user.id}/avatar.jpg`;
+        const { error: uploadError } = await supabaseClient.storage
+            .from('profile-photos')
+            .upload(path, file, { cacheControl: '0', contentType: 'image/jpeg', upsert: true });
+        if (uploadError) throw uploadError;
+
+        const avatarPath = `profile-photos/${path}`;
+        const { data: updatedUser, error: updateError } = await supabaseClient.auth.updateUser({
+            data: { avatar_path: avatarPath },
+        });
+        if (updateError) throw updateError;
+
+        const { data, error } = await supabaseClient.storage
+            .from('profile-photos')
+            .createSignedUrl(path, 60 * 60);
+        if (error) throw error;
+        return {
+            path: avatarPath,
+            userId: updatedUser.user.id,
+            url: `${data.signedUrl}&v=${Date.now()}`,
+        };
+    }
+
+    async function getProfilePhotoUrl() {
+        const user = await getCurrentUser();
+        const path = user.user_metadata?.avatar_path;
+        if (!path) return null;
+        const objectPath = `${user.id}/avatar.jpg`;
+        if (path !== `profile-photos/${objectPath}`) {
+            throw new Error('The saved profile photo path is invalid for this account.');
+        }
+        const { data, error } = await supabaseClient.storage
+            .from('profile-photos')
+            .createSignedUrl(objectPath, 60 * 60);
+        if (error) throw error;
+        return `${data.signedUrl}&v=${Date.now()}`;
+    }
+
     document.addEventListener('DOMContentLoaded', init);
-    return { showAuth };
+    return { showAuth, getCurrentUser, uploadProfilePhoto, getProfilePhotoUrl };
 })();

@@ -211,6 +211,7 @@ function initProfile() {
     }
 
     const objectUrl = URL.createObjectURL(file);
+    let previewUrl;
     try {
       const image = new Image();
       image.src = objectUrl;
@@ -228,16 +229,28 @@ function initProfile() {
       if (!context) throw new Error('Image editing is not supported in this browser.');
       context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
 
-      const avatar = canvas.toDataURL('image/jpeg', 0.8);
+      const compressedPhoto = await new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob);
+          else reject(new Error('The selected image could not be prepared for upload.'));
+        }, 'image/jpeg', 0.8);
+      });
+      previewUrl = URL.createObjectURL(compressedPhoto);
+      renderProfilePhoto(previewUrl, Storage.getProfile().name || 'Athlete');
+      const { path, userId, url } = await AuthModule.uploadProfilePhoto(compressedPhoto);
       const profile = Storage.getProfile();
-      if (!Storage.saveProfile({ ...profile, avatar })) return;
+      if (!Storage.saveProfile({ ...profile, avatar: path, avatarUserId: userId })) return;
+      renderProfilePhoto(url, profile.name || 'Athlete');
       refreshProfile();
       showToast('Profile photo updated!', 'success');
     } catch (error) {
+      refreshProfile();
+      if (Storage.getProfile().avatar?.startsWith('profile-photos/')) await loadProfilePhoto();
       const reason = error instanceof Error ? error.message : 'Unknown image error';
       showToast(`Could not use that image: ${reason}`, 'error');
     } finally {
       URL.revokeObjectURL(objectUrl);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       photoInput.value = '';
     }
   });
@@ -266,12 +279,37 @@ function refreshProfile() {
   const nameInput = document.getElementById('profile-name-input');
   if (nameInput) nameInput.value = name;
   if (typeof profile.avatar === 'string' && profile.avatar.startsWith('data:image/')) {
-    document.querySelectorAll('#profile-avatar, #profile-avatar-big').forEach(avatar => {
-      const image = document.createElement('img');
-      image.src = profile.avatar;
-      image.alt = `${name}'s profile photo`;
-      avatar.replaceChildren(image);
-    });
+    renderProfilePhoto(profile.avatar, name);
+  } else if (!profile.avatar?.startsWith('profile-photos/')) {
+    renderProfilePhoto(null, name);
+  }
+}
+
+function renderProfilePhoto(src, name) {
+  document.querySelectorAll('#profile-avatar, #profile-avatar-big').forEach(avatar => {
+    if (!src) {
+      avatar.textContent = '🏃';
+      return;
+    }
+    const image = document.createElement('img');
+    image.src = src;
+    image.alt = `${name}'s profile photo`;
+    avatar.replaceChildren(image);
+  });
+}
+
+async function loadProfilePhoto() {
+  const profile = Storage.getProfile();
+  try {
+    const url = await AuthModule.getProfilePhotoUrl();
+    if (!url) {
+      renderProfilePhoto(null, profile.name || 'Athlete');
+      return;
+    }
+    renderProfilePhoto(url, profile.name || 'Athlete');
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Unknown image error';
+    showToast(`Could not load your cloud profile photo: ${reason}`, 'error');
   }
 }
 
