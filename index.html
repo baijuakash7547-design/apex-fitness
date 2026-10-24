@@ -36,28 +36,6 @@
       <section class="auth-story" aria-label="Fitness motivation">
         <img class="story-athlete-image"
           src="assets/login-athlete.png" alt="Arnold Schwarzenegger posing" />
-        <div class="story-orbit orbit-one"></div>
-        <div class="story-orbit orbit-two"></div>
-        <div class="story-content">
-          <div class="story-pill"><span>✦</span> YOUR NEXT CHAPTER STARTS HERE</div>
-          <h1>Small steps.<br /><span>Stronger you.</span></h1>
-          <p>Build healthy habits, celebrate every milestone, and make progress that feels like yours.</p>
-          <div class="story-stats" aria-label="PRISM features">
-            <div><span class="story-stat-icon">◉</span><strong>Track</strong><small>your daily wins</small></div>
-            <div><span class="story-stat-icon">↗</span><strong>Grow</strong><small>at your own pace</small></div>
-            <div><span class="story-stat-icon">✧</span><strong>Thrive</strong><small>one day at a time</small></div>
-          </div>
-          <div class="story-quote"><span>“</span>
-            <div><strong>Progress, not perfection.</strong><small>Every workout is a promise you keep to
-                yourself.</small></div>
-          </div>
-        </div>
-        <div class="story-decoration" aria-hidden="true">
-          <span class="decoration-ring ring-large"></span>
-          <span class="decoration-ring ring-small"></span>
-          <span class="decoration-spark spark-one">✦</span>
-          <span class="decoration-spark spark-two">✧</span>
-        </div>
       </section>
 
       <section class="auth-panel" aria-labelledby="auth-title">
@@ -139,12 +117,22 @@
       </div>
 
       <div class="sidebar-profile">
-        <div class="profile-avatar" id="profile-avatar">🏃</div>
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profile-avatar">🏃</div>
+          <button class="profile-photo-edit" type="button" data-profile-photo-edit
+            aria-label="Change profile photo" title="Choose or take a profile photo">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 4h-4l-1.5 2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4Z" />
+              <circle cx="12" cy="12.5" r="3.5" />
+            </svg>
+          </button>
+        </div>
         <div class="profile-info">
           <div class="name" id="profile-name">Athlete</div>
           <div class="subtitle">⚡ Active Member</div>
         </div>
       </div>
+      <input id="profile-photo-input" type="file" accept="image/*" hidden />
 
       <div class="sidebar-nav">
         <div class="nav-section-label">Overview</div>
@@ -990,7 +978,16 @@
                 <div class="section-title">Personal Info</div>
               </div>
               <div style="text-align:center;margin-bottom:24px">
-                <div style="font-size:5rem;margin-bottom:12px" id="profile-avatar-big">🏃</div>
+                <div class="profile-avatar-editable">
+                  <div class="profile-avatar profile-avatar-large" id="profile-avatar-big">🏃</div>
+                  <button class="profile-photo-edit" type="button" data-profile-photo-edit
+                    aria-label="Change profile photo" title="Choose or take a profile photo">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M14 4h-4l-1.5 2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4Z" />
+                      <circle cx="12" cy="12.5" r="3.5" />
+                    </svg>
+                  </button>
+                </div>
                 <div style="font-size:1.5rem;font-weight:800" id="profile-name-display">Athlete</div>
                 <div style="color:var(--accent-green);font-size:0.85rem">⚡ Active Member</div>
               </div>

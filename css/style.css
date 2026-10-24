@@ -233,6 +233,11 @@ ul {
   flex-shrink: 0;
 }
 
+.profile-avatar-wrap {
+  position: relative;
+  flex: 0 0 40px;
+}
+
 .profile-avatar img {
   width: 100%;
   height: 100%;
@@ -241,6 +246,13 @@ ul {
 }
 
 .profile-avatar-large {
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+}
+
+.profile-avatar-editable {
+  position: relative;
   width: 5rem;
   height: 5rem;
   margin: 0 auto 12px;
@@ -273,15 +285,17 @@ ul {
 }
 
 .profile-photo-edit {
-  width: 30px;
-  height: 30px;
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 23px;
+  height: 23px;
   display: grid;
   place-items: center;
-  flex: 0 0 auto;
   padding: 0;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  background: #171717;
   color: #fff;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
@@ -289,7 +303,7 @@ ul {
 
 .profile-photo-edit:hover {
   border-color: var(--accent-purple);
-  background: rgba(124, 58, 237, 0.16);
+  background: var(--accent-purple);
   color: var(--text-primary);
 }
 
@@ -299,8 +313,8 @@ ul {
 }
 
 .profile-photo-edit svg {
-  width: 16px;
-  height: 16px;
+  width: 13px;
+  height: 13px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;

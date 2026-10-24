@@ -233,8 +233,9 @@ function initProfile() {
       if (!Storage.saveProfile({ ...profile, avatar })) return;
       refreshProfile();
       showToast('Profile photo updated!', 'success');
-    } catch {
-      showToast('Could not use that image. Try choosing a different photo.', 'error');
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown image error';
+      showToast(`Could not use that image: ${reason}`, 'error');
     } finally {
       URL.revokeObjectURL(objectUrl);
       photoInput.value = '';
@@ -265,8 +266,11 @@ function refreshProfile() {
   const nameInput = document.getElementById('profile-name-input');
   if (nameInput) nameInput.value = name;
   if (typeof profile.avatar === 'string' && profile.avatar.startsWith('data:image/')) {
-    document.querySelectorAll('#profile-avatar img, #profile-avatar-big img').forEach(image => {
+    document.querySelectorAll('#profile-avatar, #profile-avatar-big').forEach(avatar => {
+      const image = document.createElement('img');
       image.src = profile.avatar;
+      image.alt = `${name}'s profile photo`;
+      avatar.replaceChildren(image);
     });
   }
 }
