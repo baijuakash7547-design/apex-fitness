@@ -192,6 +192,54 @@ function initProfile() {
   refreshProfile();
   const nameInput = document.getElementById('profile-name-input');
   const saveBtn = document.getElementById('save-profile-btn');
+  const photoInput = document.getElementById('profile-photo-input');
+  document.querySelectorAll('[data-profile-photo-edit]').forEach(button => {
+    button.addEventListener('click', () => photoInput?.click());
+  });
+  photoInput?.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Choose an image file for your profile photo.', 'warning');
+      photoInput.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Choose an image smaller than 10 MB.', 'warning');
+      photoInput.value = '';
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode();
+      if (!image.naturalWidth || !image.naturalHeight) throw new Error('The selected image has no dimensions.');
+
+      const size = 320;
+      const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Image editing is not supported in this browser.');
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+
+      const avatar = canvas.toDataURL('image/jpeg', 0.8);
+      const profile = Storage.getProfile();
+      if (!Storage.saveProfile({ ...profile, avatar })) return;
+      refreshProfile();
+      showToast('Profile photo updated!', 'success');
+    } catch {
+      showToast('Could not use that image. Try choosing a different photo.', 'error');
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+      photoInput.value = '';
+    }
+  });
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
       const name = nameInput?.value.trim() || '';
@@ -216,6 +264,75 @@ function refreshProfile() {
   setText('profile-name-display', name);
   const nameInput = document.getElementById('profile-name-input');
   if (nameInput) nameInput.value = name;
+  if (typeof profile.avatar === 'string' && profile.avatar.startsWith('data:image/')) {
+    document.querySelectorAll('#profile-avatar img, #profile-avatar-big img').forEach(image => {
+      image.src = profile.avatar;
+    });
+  }
+}
+
+function initImageViewer() {
+  const viewer = document.createElement('dialog');
+  viewer.className = 'image-viewer';
+  viewer.setAttribute('aria-label', 'Image preview');
+
+  const closeButton = document.createElement('button');
+  closeButton.className = 'image-viewer-close';
+  closeButton.type = 'button';
+  closeButton.setAttribute('aria-label', 'Close image preview');
+  closeButton.textContent = '×';
+
+  const image = document.createElement('img');
+  image.className = 'image-viewer-image';
+  image.alt = '';
+
+  const caption = document.createElement('p');
+  caption.className = 'image-viewer-caption';
+
+  viewer.append(closeButton, image, caption);
+  document.body.appendChild(viewer);
+
+  const makeImageAccessible = target => {
+    if (!(target instanceof HTMLImageElement) || target === image) return;
+    target.tabIndex = 0;
+    target.setAttribute('role', 'button');
+    if (!target.hasAttribute('aria-label')) {
+      target.setAttribute('aria-label', target.alt ? `View image: ${target.alt}` : 'View image');
+    }
+  };
+
+  document.querySelectorAll('img').forEach(makeImageAccessible);
+
+  const openViewer = target => {
+    makeImageAccessible(target);
+    image.src = target.currentSrc || target.src;
+    image.alt = target.alt;
+    caption.textContent = target.alt;
+    viewer.showModal();
+    closeButton.focus();
+  };
+
+  document.addEventListener('click', event => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement && target !== image) openViewer(target);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.target instanceof HTMLImageElement && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      openViewer(event.target);
+    }
+  });
+
+  closeButton.addEventListener('click', () => viewer.close());
+  viewer.addEventListener('click', event => {
+    if (event.target === viewer) viewer.close();
+  });
+
+  viewer.addEventListener('close', () => {
+    image.removeAttribute('src');
+    caption.textContent = '';
+  });
 }
 
 // ── Mobile Sidebar Toggle ─────────────────────────────────────────────────────
@@ -285,6 +402,7 @@ function initApp() {
   // Init UI
   initSidebar();
   initProfile();
+  initImageViewer();
   updateDateTime();
   renderMotivationalQuote();
   updateDashboard();

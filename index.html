@@ -35,7 +35,7 @@
     <div class="auth-content">
       <section class="auth-story" aria-label="Fitness image">
         <img class="story-athlete-image"
-          src="https://wallpapers.com/images/hd/arnold-schwarzenegger-heavy-big-muscle-d7w6h5bjn6xxe9nd.jpg"
+          src="assets/login-athlete.png"
           alt="Arnold Schwarzenegger posing" />
       </section>
 
@@ -111,7 +111,7 @@
     <nav id="sidebar" role="navigation" aria-label="Main navigation">
 
       <div class="sidebar-header">
-        <div class="sidebar-logo">🏋️‍♂️</div>
+        <div class="sidebar-logo"><img src="assets/apex-logo.png" alt="APEX Fitness logo" /></div>
         <div class="sidebar-brand">
           <span class="sidebar-brand-name">APEX Fitness</span>
           <span class="sidebar-brand-sub">Your Fitness Companion</span>
@@ -128,6 +128,14 @@
           <div class="name" id="profile-name">Athlete</div>
           <div class="subtitle">⚡ Active Member</div>
         </div>
+        <button class="profile-photo-edit" type="button" data-profile-photo-edit
+          aria-label="Choose profile photo from gallery" title="Choose profile photo">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h3l2-2h6l2 2h3v12H4z"></path>
+            <circle cx="12" cy="13" r="3.5"></circle>
+          </svg>
+        </button>
+        <input id="profile-photo-input" type="file" accept="image/*" hidden />
       </div>
 
       <div class="sidebar-nav">
@@ -367,7 +375,7 @@
         <!-- ══════════════ ANALYTICS PAGE ══════════════ -->
         <section id="page-analytics" class="page" aria-labelledby="analytics-heading">
           <div class="page-header">
-            <h1 id="analytics-heading">📊 Analytics</h1>
+            <h1 id="analytics-heading"><span class="heading-icon" aria-hidden="true">📊</span> Analytics</h1>
             <p>Visual insights into your fitness journey</p>
           </div>
           <div class="content-grid">
@@ -412,7 +420,7 @@
         <!-- ══════════════ WORKOUTS PAGE ══════════════ -->
         <section id="page-workouts" class="page" aria-labelledby="workouts-heading">
           <div class="page-header">
-            <h1 id="workouts-heading">🏋️ Workouts</h1>
+            <h1 id="workouts-heading"><span class="heading-icon" aria-hidden="true">🏋️</span> Workouts</h1>
             <p>Log exercises, track sets and reps, and build your training history</p>
           </div>
 
@@ -518,7 +526,7 @@
         <!-- ══════════════ GYM ROUTINE PAGE ══════════════ -->
         <section id="page-gym-routine" class="page" aria-labelledby="gym-routine-heading">
           <div class="page-header">
-            <h1 id="gym-routine-heading">📅 Gym Routine</h1>
+            <h1 id="gym-routine-heading"><span class="heading-icon" aria-hidden="true">📅</span> Gym Routine</h1>
             <p>Your weekly training split, repeated from Monday through Saturday</p>
           </div>
           <div class="content-grid-3">
@@ -577,7 +585,7 @@
         <!-- ══════════════ NUTRITION PAGE ══════════════ -->
         <section id="page-nutrition" class="page" aria-labelledby="nutrition-heading">
           <div class="page-header">
-            <h1 id="nutrition-heading">🥗 Nutrition</h1>
+            <h1 id="nutrition-heading"><span class="heading-icon" aria-hidden="true">🥗</span> Nutrition</h1>
             <p>Track meals, calories, and macros to fuel your fitness</p>
           </div>
 
@@ -748,7 +756,7 @@
         <!-- ══════════════ WATER PAGE ══════════════ -->
         <section id="page-water" class="page" aria-labelledby="water-heading">
           <div class="page-header">
-            <h1 id="water-heading">💧 Hydration Tracker</h1>
+            <h1 id="water-heading"><span class="heading-icon" aria-hidden="true">💧</span> Hydration Tracker</h1>
             <p>Stay hydrated — your body is ~60% water!</p>
           </div>
 
@@ -832,7 +840,7 @@
         <!-- ══════════════ BMI PAGE ══════════════ -->
         <section id="page-bmi" class="page" aria-labelledby="bmi-heading">
           <div class="page-header">
-            <h1 id="bmi-heading">📏 Body &amp; BMI</h1>
+            <h1 id="bmi-heading"><span class="heading-icon" aria-hidden="true">📏</span> Body &amp; BMI</h1>
             <p>Track your body composition and calculate your BMI</p>
           </div>
 
@@ -988,7 +996,7 @@
         <!-- ══════════════ GOALS PAGE ══════════════ -->
         <section id="page-goals" class="page" aria-labelledby="goals-heading">
           <div class="page-header">
-            <h1 id="goals-heading">🎯 Goals &amp; Achievements</h1>
+            <h1 id="goals-heading"><span class="heading-icon" aria-hidden="true">🎯</span> Goals &amp; Achievements</h1>
             <p>Set targets, track progress, and earn badges</p>
           </div>
 
@@ -1056,7 +1064,7 @@
         <!-- ══════════════ PROFILE PAGE ══════════════ -->
         <section id="page-profile" class="page" aria-labelledby="profile-heading">
           <div class="page-header">
-            <h1 id="profile-heading">👤 Profile</h1>
+            <h1 id="profile-heading"><span class="heading-icon" aria-hidden="true">👤</span> Profile</h1>
             <p>Manage your account and preferences</p>
           </div>
 
@@ -1073,6 +1081,8 @@
                 </div>
                 <div style="font-size:1.5rem;font-weight:800" id="profile-name-display">Athlete</div>
                 <div style="color:var(--accent-green);font-size:0.85rem">⚡ Active Member</div>
+                <button class="btn btn-secondary btn-sm" type="button" data-profile-photo-edit
+                  style="margin-top:12px">📷 Choose photo from gallery</button>
               </div>
               <div class="form-group" style="margin-bottom:12px">
                 <label class="form-label" for="profile-name-input">Display Name</label>
