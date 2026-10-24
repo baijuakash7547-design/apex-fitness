@@ -112,8 +112,9 @@ const NutritionModule = (() => {
     try {
       const params = new URLSearchParams({
         search_terms: query,
-        fields: 'code,product_name,brands,serving_size,nutriments',
+        fields: 'code,product_name,product_name_en,brands,serving_size,serving_size_en,nutriments',
         page_size: '12',
+        lc: 'en',
         json: '1',
       });
       const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${params}`, {
@@ -126,20 +127,22 @@ const NutritionModule = (() => {
       foodSearchResults = products
         .map(product => {
           const nutrients = product.nutriments || {};
+          const productName = product.product_name_en || product.product_name;
+          const servingSize = product.serving_size_en || product.serving_size;
           const caloriesPer100 = nutrients['energy-kcal_100g'];
           const proteinPer100 = nutrients.proteins_100g;
           const calories = Number(caloriesPer100);
           const protein = Number(proteinPer100);
-          if (!product.code || !product.product_name ||
+          if (!product.code || !productName ||
             caloriesPer100 === null || caloriesPer100 === undefined ||
             proteinPer100 === null || proteinPer100 === undefined ||
             !Number.isFinite(calories) || calories < 0 ||
             !Number.isFinite(protein) || protein < 0) return null;
           return {
             code: String(product.code),
-            name: String(product.product_name).trim(),
+            name: String(productName).trim(),
             brand: typeof product.brands === 'string' ? product.brands.split(',')[0].trim() : '',
-            servingSize: typeof product.serving_size === 'string' ? product.serving_size.trim() : '',
+            servingSize: typeof servingSize === 'string' ? servingSize.trim() : '',
             caloriesPer100: calories,
             proteinPer100: protein,
             carbsPer100: Number(nutrients.carbohydrates_100g) || 0,
