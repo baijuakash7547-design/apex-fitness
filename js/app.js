@@ -211,11 +211,9 @@ function initProfile() {
 function refreshProfile() {
   const profile = Storage.getProfile();
   const name = profile.name || 'Athlete';
-  const avatar = profile.avatar || '💪';
   setText('profile-name', name);
   setText('profile-name-top', name);
   setText('profile-name-display', name);
-  setText('profile-avatar-big', avatar);
   const nameInput = document.getElementById('profile-name-input');
   if (nameInput) nameInput.value = name;
 }

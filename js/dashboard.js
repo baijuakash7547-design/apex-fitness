@@ -13,7 +13,6 @@ window.updateDashboard = function updateDashboardWithExtras() {
   setText('hero-name', name);
   setText('profile-name-top', name);
   setText('profile-name-display', name);
-  setText('profile-avatar-big', profile.avatar || '🏃');
 
   const glasses = WaterModule.getTodayGlasses();
   const waterGoal = WaterModule.getGoal();
