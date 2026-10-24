@@ -255,17 +255,27 @@ function initProfile() {
     }
   });
   if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
       const name = nameInput?.value.trim() || '';
       if (!name || name.length > 60) {
         showToast('Enter a display name between 1 and 60 characters.', 'warning');
         nameInput?.focus();
         return;
       }
-      const profile = Storage.getProfile();
-      if (!Storage.saveProfile({ ...profile, name })) return;
-      refreshProfile();
-      showToast('Profile updated!', 'success');
+      saveBtn.disabled = true;
+      try {
+        await AuthModule.updateDisplayName(name);
+        const profile = Storage.getProfile();
+        if (!Storage.saveProfile({ ...profile, name })) return;
+        refreshProfile();
+        if (typeof updateDashboard === 'function') updateDashboard();
+        showToast('Profile updated!', 'success');
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'Unknown account error';
+        showToast(`Could not update your account name: ${reason}`, 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
     });
   }
 }

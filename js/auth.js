@@ -57,10 +57,17 @@ const AuthModule = (() => {
     function showApp(account) {
         const app = document.getElementById('app-layout');
         const auth = document.getElementById('auth-screen');
-        const accountName = account?.user_metadata?.display_name;
-        if (accountName && typeof Storage !== 'undefined') {
+        const accountId = account?.id;
+        const accountName = typeof account?.user_metadata?.display_name === 'string'
+            ? account.user_metadata.display_name.trim()
+            : '';
+        if (accountId && typeof Storage !== 'undefined') {
             const profile = Storage.getProfile();
-            if (!profile.name || profile.name === 'Athlete') Storage.saveProfile({ ...profile, name: accountName });
+            if (profile.accountId !== accountId) {
+                Storage.saveProfile({ name: accountName || 'Athlete', avatar: '🏃', accountId });
+            } else if (!profile.name || profile.name === 'Athlete') {
+                Storage.saveProfile({ ...profile, name: accountName || 'Athlete', accountId });
+            }
             if (typeof refreshProfile === 'function') refreshProfile();
         }
         auth.hidden = true;
@@ -252,6 +259,15 @@ const AuthModule = (() => {
         return data.user;
     }
 
+    async function updateDisplayName(name) {
+        const { data, error } = await supabaseClient.auth.updateUser({
+            data: { display_name: name },
+        });
+        if (error) throw error;
+        if (!data.user) throw new Error('Supabase did not return the updated account.');
+        return data.user;
+    }
+
     async function uploadProfilePhoto(file) {
         const user = await getCurrentUser();
         const path = `${user.id}/avatar.jpg`;
@@ -293,5 +309,5 @@ const AuthModule = (() => {
     }
 
     document.addEventListener('DOMContentLoaded', init);
-    return { showAuth, getCurrentUser, uploadProfilePhoto, getProfilePhotoUrl };
+    return { showAuth, getCurrentUser, updateDisplayName, uploadProfilePhoto, getProfilePhotoUrl };
 })();
